@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Replace with your real domain, or serve the dynamic version from the API (see README > SEO)
+Sitemap: https://interior-studio-liart.vercel.app/sitemap.xml

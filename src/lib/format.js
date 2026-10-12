@@ -1,0 +1,9 @@
+export const slugify = (v = '') => String(v).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const norm = (s) => slugify(s).replace(/s$/, '');
+export const sameSlug = (a, b) => norm(a) === norm(b);
+export const itemKey = (i) => i._id || i.slug || i.title;
+export const itemSlug = (i) => i.slug || i._id || slugify(i.title);
+export const dateLabel = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+export const inr = (n) => (n >= 1e7 ? `₹${(n / 1e7).toFixed(1)} Cr` : n >= 1e5 ? `₹${(n / 1e5).toFixed(1)} L` : `₹${Number(n).toLocaleString('en-IN')}`);
+export const paragraphs = (t = '') => String(t).split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+export const phoneDigits = (p = '') => String(p).replace(/\D/g, '');
