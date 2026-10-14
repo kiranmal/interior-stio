@@ -14,7 +14,8 @@ export function useContent(type) {
       .then((d) => {
         if (!alive) return;
         const items = Array.isArray(d.items) ? d.items : [];
-        if (!items.length && FALLBACK_WHEN_EMPTY.includes(type)) setState({ items: FALLBACK[type], loading: false, error: null, fallback: true });
+        const noRecordsAtAll = d.hasAny === false; // collection genuinely empty (not just unpublished)
+        if (!items.length && (noRecordsAtAll || FALLBACK_WHEN_EMPTY.includes(type))) setState({ items: FALLBACK[type], loading: false, error: null, fallback: true });
         else setState({ items, loading: false, error: null, fallback: false });
       })
       .catch((error) => { if (alive) setState({ items: FALLBACK[type] || [], loading: false, error, fallback: true }); });

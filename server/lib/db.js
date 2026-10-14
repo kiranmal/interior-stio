@@ -20,9 +20,13 @@ export function connectDb() {
 }
 
 /** Keep trying in the background so the API can start and report health while Mongo is unreachable. */
-export function connectWithRetry(log = console) {
+export function connectWithRetry(log = console, onConnected) {
   const attempt = async () => {
-    try { await connectDb(); log.log('MongoDB connected'); }
+    try {
+      await connectDb(); log.log('MongoDB connected');
+      if (onConnected) { try { await onConnected(); } catch (e) { log.error('Post-connect task failed:', e.message); } }
+      return;
+    }
     catch (e) { log.error('MongoDB connection failed (retrying in 5s):', e.message); setTimeout(attempt, 5000); }
   };
   return attempt();

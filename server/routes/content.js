@@ -84,8 +84,10 @@ router.get('/', wrap(async (req, res) => {
   if (req.query.featured === 'true') filter.featured = true;
   const limit = int(req.query.limit, 100, 1, 200);
   const items = await ContentItem.find(filter).sort({ order: 1, createdAt: -1 }).limit(limit).lean();
+  // hasAny=false means the collection has no records at all (not merely unpublished) so the site can show defaults.
+  const hasAny = items.length > 0 || !type ? true : (await ContentItem.exists({ type })) !== null;
   res.set('Cache-Control', 'public, max-age=30');
-  res.json({ items });
+  res.json({ items, hasAny });
 }));
 
 /* ---------- Admin (editor or admin) ---------- */

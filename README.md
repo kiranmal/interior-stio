@@ -60,6 +60,7 @@ cp .env.example .env            # optional locally; required in production build
 | server | `JWT_SECRET` (≥32 chars), `JWT_EXPIRES_IN` | admin sessions |
 | server | `CLIENT_URL` | allowed frontend origin(s), comma-separated, **required in production** |
 | server | `SITE_URL` | public site URL used by `/sitemap.xml` |
+| server | `AUTO_SEED` | `false` disables the additive start-up seeding |
 | server | `PORT`, `TRUST_PROXY` | listening port; `1` behind Render/Railway/Nginx |
 | server | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first-admin bootstrap only |
 | server | `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET/FOLDER` | optional image uploads |
@@ -79,7 +80,11 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a-long-password-with-1-number' npm r
 * Roles: **admin** (everything) and **editor** (content + enquiries; cannot change settings, manage users, delete enquiries/pages).
 * Login is rate-limited (10 attempts / 15 min / IP) and accounts lock for 15 min after 5 failures.
 
-## Seed starter content (optional, additive)
+## Starter content and automatic sync
+When the API connects to MongoDB it **automatically adds starter content, but only for content types that have no records at all** (services, projects, gallery, testimonials, blog, team, FAQs, banners, settings, homepage layout). It never updates, deletes or overwrites anything, and never touches users or enquiries. Set `AUTO_SEED=false` to turn this off.
+On the website, if a content type has no records in the database the page shows the built-in defaults instead of an empty section; once you add or seed records, your database content is shown. Unpublishing items does *not* bring defaults back (only a completely empty collection does).
+
+## Seed starter content manually (optional, additive)
 ```bash
 cd server && npm run seed
 ```
@@ -154,7 +159,7 @@ Do *not* assume Vercel runs `server/` as a persistent Express server – this pr
 * Package versions were chosen from memory and never resolved; if `npm install` complains, bump them.
 * ESLint config is written for ESLint 9 flat config; unrun, so warnings are possible.
 * Existing live documents have no `slug`; run `npm run migrate:slugs` (or edit them in the admin). Until then detail URLs fall back to the record id.
-* Types introduced in v2 (team, FAQ, banner) show built-in defaults until you create/seed your own.
+* Types with no records (e.g. team, FAQ, banner on an older database) are filled by the start-up auto-seed, or show built-in defaults until then. The auto-seed and the `hasAny` fallback are untested (no MongoDB available).
 * Changing the seed data: edit `server/scripts/seedData.js` then `npm run sync-seed` to refresh the frontend copy.
 * Admin token is kept in `sessionStorage` (cleared when the tab closes); a strict CSP is recommended once the final domains are known.
 * Rotate any credentials that were in the `.env` file inside the ZIP originally supplied to me.

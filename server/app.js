@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { clientOrigins, isProd } from "./lib/env.js";
-import { dbReady } from "./lib/db.js";
+import { dbReady, connectDb } from "./lib/db.js";
 import { sanitizeInput } from "./lib/validate.js";
 import { apiLimiter } from "./middleware/rateLimit.js";
 import enquiryRoute from "./routes/enquiry.js";
@@ -45,15 +45,20 @@ export function createApp() {
   );
 
   // Everything below needs the database.
-  app.use((req, res, next) =>
-    dbReady()
-      ? next()
-      : res
-          .status(503)
-          .json({
-            error: "Service temporarily unavailable. Please try again shortly.",
-          }),
-  );
+  app.use(async (req, res, next) => {
+    if (dbReady()) return next();
+
+    try {
+      await connectDb();
+      return next();
+    } catch (err) {
+      console.error("Database unavailable:", err.message);
+
+      return res.status(503).json({
+        error: "Service temporarily unavailable. Please try again shortly.",
+      });
+    }
+  });
 
   app.use("/api/enquiry", enquiryRoute);
   app.use("/api/admin", adminRoute);
@@ -69,11 +74,9 @@ export function createApp() {
     if (err?.type === "entity.too.large")
       return res.status(413).json({ error: "Request body too large." });
     if (err?.name === "ValidationError" && err.errors)
-      return res
-        .status(400)
-        .json({
-          error: Object.values(err.errors)[0]?.message || "Invalid data.",
-        });
+      return res.status(400).json({
+        error: Object.values(err.errors)[0]?.message || "Invalid data.",
+      });
     if (err?.code === 11000)
       return res
         .status(409)
@@ -85,6 +88,3 @@ export function createApp() {
   });
   return app;
 }
-const app = createApp();
-
-export default app;
