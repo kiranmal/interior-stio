@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as Settings from '../models/settings.js';
 import * as Pages from '../models/pages.js';
-import * as Seo from '../models/seo.js';
+import * as Seo from '../models/Seo.js';
 import * as Content from '../models/content.js';
 import { str, wrap } from '../lib/validate.js';
 
@@ -51,3 +51,4 @@ router.get('/robots.txt', (_req, res) => {
 });
 
 export default router;
+

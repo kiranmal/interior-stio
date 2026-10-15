@@ -12,7 +12,7 @@ import * as Pages from '../models/pages.js';
 import { SECTION_TYPES } from '../models/pages.js';
 import * as Settings from '../models/settings.js';
 import { SOCIAL_PLATFORMS } from '../models/settings.js';
-import * as Seo from '../models/seo.js';
+import * as Seo from '../models/Seo.js';
 import auth, { requireRole } from '../middleware/auth.js';
 import { loginLimiter, adminLimiter } from '../middleware/rateLimit.js';
 import { cloudinaryEnabled, uploadBuffer } from '../lib/cloudinary.js';
@@ -255,4 +255,5 @@ router.post('/upload', requireRole('editor'), (req, res, next) => {
 }));
 
 export default router;
+
 
