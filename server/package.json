@@ -1,12 +1,17 @@
 {
   "name": "ivy-interio-server",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=18.18" },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:create": "node scripts/migrate.js --create-database",
+    "db:status": "node scripts/migrate.js --status",
+    "db:seed": "node scripts/seed.js",
+    "db:import-mongo": "node scripts/importMongoJson.js",
     "create-admin": "node scripts/createAdmin.js",
     "seed": "node scripts/seed.js",
     "migrate:slugs": "node scripts/migrateSlugs.js",
@@ -21,8 +26,8 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.0"
   },
   "optionalDependencies": {
     "cloudinary": "^2.5.1"

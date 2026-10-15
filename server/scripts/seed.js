@@ -1,10 +1,10 @@
-// Safe, repeatable seed (additive only).   Usage: npm run seed
+// Safe, repeatable seed (additive only).   Usage: npm run db:seed
 import '../lib/env.js';
-import mongoose from 'mongoose';
-import { connectDb } from '../lib/db.js';
+import { connectDb, assertSchema, closeDb, friendlyDbError } from '../lib/db.js';
 import { seedMissing } from './seedLib.js';
 
-if (!process.env.MONGO_URI) { console.error('MONGO_URI is not set.'); process.exit(1); }
-await connectDb();
-console.log(`Done. ${await seedMissing()} record(s) added.`);
-await mongoose.disconnect();
+try {
+  await connectDb(); await assertSchema();
+  console.log(`Done. ${await seedMissing()} row(s) added.`);
+} catch (e) { console.error(`Seed FAILED: ${friendlyDbError(e)}`); process.exitCode = 1; }
+await closeDb();

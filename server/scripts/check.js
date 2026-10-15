@@ -1,15 +1,13 @@
-// Read-only connectivity check:  npm run check
+// Read-only connectivity + schema check:  npm run check
 import '../lib/env.js';
-import mongoose from 'mongoose';
-import { connectDb } from '../lib/db.js';
-import AdminUser from '../models/AdminUser.js';
-import ContentItem from '../models/ContentItem.js';
-import Enquiry from '../models/Enquiry.js';
+import { connectDb, assertSchema, closeDb, friendlyDbError, query } from '../lib/db.js';
 
-if (!process.env.MONGO_URI) { console.error('MONGO_URI is not set.'); process.exit(1); }
 try {
   await connectDb();
-  console.log('MongoDB connection OK, database:', mongoose.connection.name);
-  console.log('Admin users:', await AdminUser.countDocuments(), '| Content items:', await ContentItem.countDocuments(), '| Enquiries:', await Enquiry.countDocuments());
-} catch (e) { console.error('Connection failed:', e.message); process.exitCode = 1; }
-await mongoose.disconnect().catch(() => {});
+  const [{ v, db }] = await query('SELECT VERSION() AS v, DATABASE() AS db');
+  console.log(`MySQL connection OK (version ${v}, database ${db})`);
+  await assertSchema();
+  const n = async (t) => (await query(`SELECT COUNT(*) AS n FROM ${t}`))[0].n;
+  console.log('Schema OK. Admin users:', await n('admin_users'), '| Content rows:', await n('content_items'), '| Enquiries:', await n('enquiries'));
+} catch (e) { console.error(`Check FAILED: ${friendlyDbError(e)}`); process.exitCode = 1; }
+await closeDb();

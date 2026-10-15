@@ -1,165 +1,153 @@
-# Ivy Interio – website + admin CMS
+# Ivy Interio – website + admin CMS (MySQL 8 edition)
 
-Vite + React 18 frontend (`/src`) and an Express + Mongoose API (`/server`) backed by MongoDB.
-The two parts are deployed **separately** (see Deployment).
+Vite + React 18 frontend (`/src`) and an Express API (`/server`) backed by **MySQL 8** through `mysql2/promise`
+(connection pool, parameterised queries). The two parts are deployed **separately**.
 
-> **Read first – verification status.** This version was written in a sandbox with no network access.
-> Dependencies were never installed, the Vite build was never run, the API was never started and no MongoDB
-> was ever contacted. Only static checks were possible (see *What was actually tested*). Run the commands
-> below on your machine before deploying, and expect to fix small issues.
+> **Read first – verification status.** This conversion was written in a sandbox with **no network and no MySQL server**.
+> Dependencies were never installed, the Vite build was never run, the API was never started, and no SQL was ever
+> executed. Only static checks were possible (see *What was actually tested*). Run the commands below on your machine
+> and expect to fix small issues before going live.
 
 ## Project structure
 ```
 .
-├── src/                    React frontend
-│   ├── App.jsx             routes (public + lazy-loaded /admin/*)
-│   ├── pages/              public pages
-│   ├── components/         layout, sections, forms, UI
-│   ├── hooks/              data + SEO hooks
-│   ├── data/seedData.js    default content (also the offline fallback)
-│   └── admin/              CMS (dashboard, content, enquiries, pages, SEO, settings, users)
-├── server/                 Express API
-│   ├── app.js / server.js  app factory / entry point
-│   ├── models/             AdminUser, ContentItem, Enquiry, Page, Setting, Seo
-│   ├── routes/             admin, content, enquiry, public (settings/pages/seo/sitemap)
-│   ├── middleware/         auth + roles, rate limiting
-│   ├── scripts/            create-admin, seed, migrate:slugs, check
-│   └── test/               integration tests (need a disposable MongoDB)
-├── public/                 logo, robots.txt, static sitemap.xml
-├── legacy/                 archived old pages (not built; see legacy/README.md)
-├── vercel.json             SPA rewrites + security/cache headers (frontend)
-└── .env.example, server/.env.example
+├── src/                      React frontend (unchanged by the MySQL migration)
+├── server/
+│   ├── app.js / server.js    app factory / entry point
+│   ├── lib/                  db.js (pool, tx, schema check), env.js, validate.js, cloudinary.js
+│   ├── migrations/           001_initial_schema.sql  (authoritative schema)
+│   ├── sql/schema.sql        same schema as a single file for manual import (phpMyAdmin etc.)
+│   ├── models/               SQL data-access modules (content, enquiries, pages, settings, seo, adminUsers)
+│   ├── routes/               admin, content, enquiry, public   (URLs and JSON shapes unchanged)
+│   ├── middleware/           auth + roles, rate limiting
+│   ├── scripts/              migrate, seed, createAdmin, migrateSlugs, check, importMongoJson
+│   └── test/                 integration tests (need a disposable MySQL 8)
+├── public/  legacy/  vercel.json  .env.example  server/.env.example
 ```
 
 ## Prerequisites
-Node.js 18.18+ (20 or 22 recommended), npm, a MongoDB database (MongoDB Atlas free tier is fine).
+Node.js 18.18+ (20/22 recommended), npm, **MySQL 8.0+** (utf8mb4, InnoDB, JSON type).
 
-## Install
+## Install and initialise
 ```bash
-npm install                 # frontend
-npm run server:install      # backend  (same as: cd server && npm install)
+npm install
+npm run server:install
+cp server/.env.example server/.env        # then edit DB_* and JWT_SECRET
 ```
-
-## Configure MongoDB (Atlas)
-1. Create a cluster, then **Database Access → Add user** (username + strong password, role *readWrite* on your database).
-2. **Network Access:** allow your API host. Render/Railway use changing IPs, so Atlas usually needs `0.0.0.0/0` for them; keep the database user's password strong and never commit it.
-3. **Connect → Drivers** and copy the `mongodb+srv://…` string. URL-encode special characters in the password.
-4. Put it in `server/.env` as `MONGO_URI` and the database name in `MONGO_DB_NAME`
-   (use your **existing** database name to keep existing content).
-5. Never use your local machine as the production database.
-
-## Environment variables
-Copy the examples and fill them in (real `.env` files are git-ignored and are NOT in this ZIP):
-```bash
-cp server/.env.example server/.env
-cp .env.example .env            # optional locally; required in production builds
+Create a database and a dedicated user once (as a MySQL admin):
+```sql
+CREATE DATABASE ivy_interio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'ivy_user'@'%' IDENTIFIED BY 'a-strong-password';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES ON ivy_interio.* TO 'ivy_user'@'%';
 ```
-| Where | Variable | Purpose |
-|---|---|---|
-| server | `MONGO_URI`, `MONGO_DB_NAME`, `MONGO_MAX_POOL_SIZE` | database |
-| server | `JWT_SECRET` (≥32 chars), `JWT_EXPIRES_IN` | admin sessions |
-| server | `CLIENT_URL` | allowed frontend origin(s), comma-separated, **required in production** |
-| server | `SITE_URL` | public site URL used by `/sitemap.xml` |
-| server | `AUTO_SEED` | `false` disables the additive start-up seeding |
-| server | `PORT`, `TRUST_PROXY` | listening port; `1` behind Render/Railway/Nginx |
-| server | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first-admin bootstrap only |
-| server | `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET/FOLDER` | optional image uploads |
-| frontend | `VITE_API_URL` | public URL of the deployed API (build-time) |
+(Or let the tool do `CREATE DATABASE` if your user may: `npm --prefix server run db:create`.)
 
-Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
-
-## Initialise the admin account safely
-Admins now live in MongoDB (`adminusers`) with bcrypt-hashed passwords.
 ```bash
 cd server
+npm run db:migrate          # creates/updates all tables; fails with a clear message if MySQL is unreachable
+npm run db:status           # shows which migrations are applied
+npm run check               # read-only: connection + required tables + row counts
 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a-long-password-with-1-number' npm run create-admin
+npm run db:seed             # optional starter content (additive only)
 ```
-* It creates the user only if it does not exist; it **never overwrites** an existing password unless you add `--reset-password`.
-* Upgrading from the old version: if `ADMIN_EMAIL`/`ADMIN_PASSWORD` are still set and **no** admin exists yet, the first successful login with those credentials creates the admin (hashed). After that, remove `ADMIN_PASSWORD` from your host's settings.
-* There is no public registration route. Extra users are added by an admin in *Admin users*.
-* Roles: **admin** (everything) and **editor** (content + enquiries; cannot change settings, manage users, delete enquiries/pages).
-* Login is rate-limited (10 attempts / 15 min / IP) and accounts lock for 15 min after 5 failures.
+* `db:migrate` stops with exit code 1 and a plain-English reason (wrong host, access denied, unknown database, TLS, MySQL < 8).
+* The API **refuses to start** (exit 1) if required tables are missing, and answers **503** (never mock data) while MySQL is unreachable.
+* A strict production user does not need `CREATE/ALTER/INDEX`; run migrations with a more privileged user, then run the API with a `SELECT, INSERT, UPDATE, DELETE` user.
 
-## Starter content and automatic sync
-When the API connects to MongoDB it **automatically adds starter content, but only for content types that have no records at all** (services, projects, gallery, testimonials, blog, team, FAQs, banners, settings, homepage layout). It never updates, deletes or overwrites anything, and never touches users or enquiries. Set `AUTO_SEED=false` to turn this off.
-On the website, if a content type has no records in the database the page shows the built-in defaults instead of an empty section; once you add or seed records, your database content is shown. Unpublishing items does *not* bring defaults back (only a completely empty collection does).
+## Tables
+| Table | Purpose |
+|---|---|
+| `admin_users` | admins/editors, bcrypt hash, role, active flag, failed-login counter + lockout time |
+| `content_items` | services, projects, gallery, testimonials, blog posts, team, FAQs, banners (`type` column; same single-table design as before) with JSON columns for gallery/tags/meta/seo, unique `(type, slug)` |
+| `enquiries` | contact / quote / calculator leads |
+| `enquiry_notes` | internal notes per enquiry (FK → `enquiries`, cascade delete) |
+| `pages`, `page_sections` | CMS pages and their ordered sections (FK cascade) |
+| `site_settings` | key/value global settings (name, contact, address, footer, logo, favicon, default SEO) |
+| `social_links` | one row per social platform |
+| `seo_entries` | per-path SEO overrides |
+| `schema_migrations` | applied migrations |
 
-## Seed starter content manually (optional, additive)
+The previous app had no separate session, token-blacklist or password-reset collections (JWT only), so no tables were invented for them.
+
+## Environment variables
+| Where | Variable | Purpose |
+|---|---|---|
+| server | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
+| server | `DB_POOL_SIZE` | pool size (default 10) |
+| server | `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED` | TLS for managed databases (keep verification on) |
+| server | `JWT_SECRET` (≥32 chars), `JWT_EXPIRES_IN` | admin sessions |
+| server | `CLIENT_URL` | allowed frontend origin(s), comma-separated; **required in production** |
+| server | `SITE_URL`, `PORT`, `TRUST_PROXY` | sitemap domain, port, proxy hops (`1` on Render/Railway) |
+| server | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first-admin bootstrap only |
+| server | `AUTO_SEED` | `false` disables additive start-up seeding |
+| server | `CLOUDINARY_*` | optional image uploads |
+| frontend | `VITE_API_URL` | public URL of the API (build-time) |
+
+Real `.env` files are git-ignored and are not in this ZIP. Generate a secret with
+`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
+
+## Admin accounts
+Admins live in `admin_users` with bcrypt hashes. `create-admin` never overwrites an existing user unless you add `--reset-password`.
+If no admin exists yet, the first successful login with `ADMIN_EMAIL`/`ADMIN_PASSWORD` creates it (hashed); then remove `ADMIN_PASSWORD` from the host.
+There is no public registration route. Login is rate-limited (10 / 15 min / IP) and accounts lock for 15 min after 5 failures. Roles: **admin** (all) and **editor** (content + enquiries).
+
+## Seeding
+`npm run db:seed` and the optional start-up sync only fill content types that have **no rows**; they never update or delete, and never touch users or enquiries.
+Run twice and nothing is duplicated. Edit `server/scripts/seedData.js`, then `npm run sync-seed` (root) to refresh the frontend's offline copy.
+
+## Moving your existing MongoDB data (optional)
+Nothing is read from MongoDB at runtime. To carry old content/enquiries over once:
 ```bash
-cd server && npm run seed
+mongoexport --uri="<old uri>" --collection=contentitems --jsonArray --out=contentitems.json
+mongoexport --uri="<old uri>" --collection=enquiries    --jsonArray --out=enquiries.json
+cd server && npm run db:import-mongo -- ../contentitems.json ../enquiries.json
 ```
-Adds default services, projects, gallery, testimonials, blog posts, team, FAQs, banners, settings and the homepage layout **only for types that have no records yet**. It never deletes or overwrites, and never touches users or enquiries.
-`npm run migrate:slugs` adds missing slugs to older services/projects/posts (existing slugs are untouched).
-`npm run check` is a read-only connection check.
+It is additive and skips rows that already exist. Test on a copy of the database first. Old admin users are not imported (use `create-admin`).
+Old documents without slugs get them via `npm run migrate:slugs`.
 
 ## Run locally
 ```bash
-# terminal 1
-npm run server:dev          # http://localhost:5000  (health: /api/health)
-# terminal 2
-npm run dev                 # http://localhost:5173  (Vite proxies /api to :5000)
+npm run server:dev     # API on :5000  (health: /api/health)
+npm run dev            # site on :5173 (Vite proxies /api)
 ```
 Admin: http://localhost:5173/admin
 
 ## Build / lint / test
 ```bash
-npm run build               # frontend production build -> dist/
-npm run lint
-cd server && TEST_MONGO_URI="mongodb://127.0.0.1:27017" npm test   # throw-away DB, dropped afterwards
+npm run build && npm run lint
+cd server && TEST_MYSQL=1 DB_HOST=127.0.0.1 DB_USER=root DB_PASSWORD=... npm test   # creates and drops ivy_test_<timestamp>
 ```
 
-## What changed (summary)
-* Real client-side routing for every page (incl. `/residential-interiors`, `/office-interiors`, `/modular-kitchen`, `/bedroom-design`, `/living-room-design`, `/commercial-interiors`, nested project/blog/service routes, `/p/:key` CMS pages, 404). The old 17 page files were unrouted and imported packages that were never installed; they are archived in `legacy/`.
-* Public data comes from the API; if the API is unreachable the site shows built-in highlights with a notice.
-* CMS: dashboard (live stats), pages & sections (order, visibility, publish), banners, services, projects, gallery, testimonials, blog, team, FAQs, enquiries (search, filters, pagination, status, notes, delete), SEO overrides, settings, admin users, password change.
-* Backend: validation + field whitelisting on every write, unique slugs, NoSQL-operator stripping, helmet, restrictive CORS (a blocked origin no longer causes a 500), 503 while the DB is down, rate limiting, server-side role checks on every admin endpoint, consistent `{error}` responses with no stack traces.
-* Stale `src/src` and `src/server` folders (older duplicates of the real code) were not carried over.
-
-### Likely cause of the earlier HTTP 500s (not reproduced)
-The old API turned a rejected CORS origin into a 500 and the repo's `vercel.json` cannot run an Express server. If the API was on Vercel without a serverless export, or `CLIENT_URL`/origin did not match, content requests would fail. Both are addressed in code, but only a real deployment can confirm it.
-
 ## Deployment
-**Frontend → Vercel (or Netlify/Cloudflare Pages)**
-1. Import the repo, framework *Vite*, root directory = repo root, build `npm run build`, output `dist`.
-2. Env var: `VITE_API_URL=https://<your-api-host>` (no trailing slash). Redeploy after changing it.
-3. `vercel.json` already rewrites unknown paths to `index.html`, so `/admin` and nested routes survive a refresh.
+**Frontend (Vercel/Netlify/Cloudflare Pages):** build `npm run build`, output `dist`, env `VITE_API_URL=https://<api-host>`. `vercel.json` rewrites deep links such as `/admin` to `index.html`.
 
-**Backend → Render / Railway / Fly / a VPS (a persistent Node host)**
-Do *not* assume Vercel runs `server/` as a persistent Express server – this project is not adapted to serverless.
-* Render: New *Web Service*, root directory `server`, build `npm install`, start `npm start`, health check `/api/health`.
-* Set all server variables above. `CLIENT_URL=https://interior-studio-liart.vercel.app` (add your custom domain, comma-separated). `NODE_ENV=production`, `TRUST_PROXY=1`.
-* Then run `create-admin` (Render shell or locally with the production `MONGO_URI`) and optionally `seed`.
+**API (Render / Railway / Fly / VPS – a persistent Node host; not Vercel serverless):** root `server`, build `npm install`, start `npm start`, health check `/api/health`.
+Set `DB_*`, `JWT_SECRET`, `CLIENT_URL=https://interior-studio-liart.vercel.app`, `NODE_ENV=production`, `TRUST_PROXY=1`. Run `npm run db:migrate` and `npm run create-admin` once (pre-deploy command, shell, or locally with the production `DB_*`).
 
-**Connection pooling:** one long-lived process with `MONGO_MAX_POOL_SIZE` (default 10) is appropriate. Do not run this API as short-lived serverless functions without reworking connection caching.
+**MySQL hosting:** use a managed MySQL 8 (e.g. Aiven, DigitalOcean, AWS RDS/Aurora MySQL, Azure Database for MySQL, Railway MySQL, your host's MySQL 8). Allow the API host's IP in the database firewall, enable `DB_SSL=true` where TLS is required, and keep `DB_POOL_SIZE` below the plan's connection limit. Never use your own computer as the production database. Back up before running migrations.
 
-**Images:** public content currently uses remote Unsplash URLs (already used by the original site) – an external dependency; replace them in the admin with your own photos. For uploads, create a free Cloudinary account and set the three `CLOUDINARY_*` variables. **Uploads are disabled (and the admin says so) until these are set.** The server's own disk is not used because hosting disks are ephemeral.
+**Images:** public content uses remote Unsplash URLs (external dependency). Uploads are disabled until the `CLOUDINARY_*` variables are set.
 
-### SEO
-* Per-page titles, descriptions, canonical and Open Graph tags are set client-side (`Seo` component); override any path in *Admin → SEO*; services/projects/posts have their own SEO fields.
-* `public/robots.txt` and `public/sitemap.xml` are static (static routes only, domain hard-coded to the Vercel URL – edit if you use another domain). A dynamic sitemap incl. published services/projects/posts is served by the API at `/sitemap.xml`; to publish it on the frontend domain add a Vercel rewrite `{"source":"/sitemap.xml","destination":"https://<api-host>/sitemap.xml"}` before the SPA rewrite and delete `public/sitemap.xml`.
-* Limitation: it is a client-rendered SPA; crawlers that do not run JavaScript only see the default `index.html` tags. Server-side rendering/prerendering would be the next step.
+**SEO:** `public/robots.txt` and `public/sitemap.xml` are static; the API serves a fuller `/sitemap.xml` (see earlier notes: add a rewrite on the frontend host to publish it). The site is client-rendered, so non-JS crawlers see only default tags.
 
 ## What was actually tested
 | Check | Result |
 |---|---|
-| JS/JSX syntax of all frontend files (TypeScript parser, `--noResolve`) | **Passed** |
-| `node --check` on all backend files | **Passed** |
-| All relative imports/named exports in `src/` and `server/` resolve (custom script) | **Passed** |
-| Validation helpers (slugify, URL checks, NoSQL operator stripping, meta/SEO cleaning) with a stubbed `mongoose` | **Passed** |
-| Integration test file runs | **Skipped** (needs `TEST_MONGO_URI`) |
-| `npm install` (frontend + server) | **Not run** (no network) |
-| `npm run build`, `npm run lint` | **Not run** |
-| API start-up, `/api/health`, login, protected routes, CRUD, enquiry flow, publish→public | **Not run** |
-| MongoDB connection, index creation, seed, create-admin | **Not run** |
-| Cloudinary upload | **Not run / not configured** |
-| Browser rendering, responsiveness, animations, accessibility audit, console errors | **Not run** |
-| Production deployment | **Not verified** |
+| JS/JSX syntax of all frontend files (TypeScript parser) | **Passed** (previous build; frontend unchanged except two small hooks) |
+| `node --check` on all 40+ backend files | **Passed** |
+| All relative imports / named exports resolve (custom script) | **Passed** |
+| Every column in every `INSERT` list and the content field map exists in `001_initial_schema.sql`; every FK target exists | **Passed** (script) |
+| No MongoDB/Mongoose imports, connections or env vars remain (grep) | **Passed** (only comments, docs and the driver-free JSON import script mention MongoDB) |
+| `npm install`, `npm run build`, `npm run lint` | **Not run** (no network) |
+| Running the migration against MySQL 8, seed, create-admin | **Not run** (no MySQL) |
+| SQL syntax validated by a real MySQL parser | **Not run** (none available offline) |
+| API start-up, login, protected routes, CRUD, enquiries, pages/settings/SEO, public content | **Not run** |
+| Integration tests (`server/test/api.test.js`, rewritten for MySQL) | **Written, skipped** (needs `TEST_MYSQL=1` and a disposable MySQL 8) |
+| Browser rendering, accessibility, production deployment | **Not run / not verified** |
 
-## Known limitations / to verify
-* Package versions were chosen from memory and never resolved; if `npm install` complains, bump them.
-* ESLint config is written for ESLint 9 flat config; unrun, so warnings are possible.
-* Existing live documents have no `slug`; run `npm run migrate:slugs` (or edit them in the admin). Until then detail URLs fall back to the record id.
-* Types with no records (e.g. team, FAQ, banner on an older database) are filled by the start-up auto-seed, or show built-in defaults until then. The auto-seed and the `hasAny` fallback are untested (no MongoDB available).
-* Changing the seed data: edit `server/scripts/seedData.js` then `npm run sync-seed` to refresh the frontend copy.
-* Admin token is kept in `sessionStorage` (cleared when the tab closes); a strict CSP is recommended once the final domains are known.
-* Rotate any credentials that were in the `.env` file inside the ZIP originally supplied to me.
+## Known limitations / manual steps
+* All SQL is unexecuted: the first `db:migrate` and first API start are the real tests. `VALUES()` in `ON DUPLICATE KEY UPDATE` is deprecated (warning only) on MySQL 8.0.20+ but still works.
+* Package versions (`mysql2 ^3.11`, etc.) were chosen from memory and never resolved.
+* IDs are now numeric strings (`"12"`) in the JSON API under the same `_id` field, so the frontend needs no change; old Mongo ObjectId links will not resolve.
+* Mongo `Mixed` fields (`meta`) are stored as JSON and still limited to flat string/number/boolean values.
+* Rotate any credentials that were in the very first `.env` you supplied.

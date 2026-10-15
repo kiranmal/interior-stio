@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import Enquiry, { ENQUIRY_SOURCES } from '../models/Enquiry.js';
+import * as Enquiries from '../models/enquiries.js';
+import { ENQUIRY_SOURCES } from '../models/enquiries.js';
 import { enquiryLimiter } from '../middleware/rateLimit.js';
 import { str, isEmail, wrap } from '../lib/validate.js';
 
@@ -24,16 +25,16 @@ router.post('/', enquiryLimiter, wrap(async (req, res) => {
   if (source !== 'cost-calculator' && message.length < 5) return res.status(400).json({ error: 'Please tell us a little about your requirement.' });
 
   // Duplicate protection: same phone + source + message within 10 minutes
-  const dup = await Enquiry.exists({ phone, source, message, createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) } });
+  const dup = await Enquiries.isDuplicate({ phone, source, message });
   if (dup) return res.status(200).json({ ok: true, duplicate: true, message: 'We already have your enquiry and will contact you shortly.' });
 
-  const enquiry = await Enquiry.create({
+  const id = await Enquiries.create({
     name, phone, email, source, message,
     city: str(b.city, 120), service: str(b.service, 120), propertyType: str(b.propertyType, 50),
     quality: str(b.quality, 50), budget: str(b.budget, 60),
     area: num(b.area), estimatedLower: num(b.estimatedLower), estimatedUpper: num(b.estimatedUpper),
   });
-  res.status(201).json({ ok: true, id: enquiry._id, message: 'Enquiry received successfully.' });
+  res.status(201).json({ ok: true, id, message: 'Enquiry received successfully.' });
 }));
 
 export default router;

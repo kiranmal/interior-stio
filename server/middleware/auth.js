@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import AdminUser from '../models/AdminUser.js';
+import * as AdminUsers from '../models/adminUsers.js';
 import { isId } from '../lib/validate.js';
 
 const rank = { editor: 1, admin: 2 };
@@ -14,9 +14,9 @@ export default async function auth(req, res, next) {
   catch { return res.status(401).json({ error: 'Session expired. Please log in again.' }); }
   if (!isId(payload.sub)) return res.status(401).json({ error: 'Invalid session.' });
   try {
-    const user = await AdminUser.findById(payload.sub).lean();
+    const user = await AdminUsers.findById(payload.sub);
     if (!user || !user.active) return res.status(401).json({ error: 'Account is not active.' });
-    req.admin = { id: String(user._id), email: user.email, name: user.name, role: user.role };
+    req.admin = { id: user.id, email: user.email, name: user.name, role: user.role };
     next();
   } catch (e) { next(e); }
 }

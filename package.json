@@ -1,7 +1,7 @@
 {
   "name": "ivy-interio",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,8 @@
     "lint": "eslint src",
     "sync-seed": "cp server/scripts/seedData.js src/data/seedData.js",
     "server:install": "npm --prefix server install",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed": "npm --prefix server run db:seed",
     "server:dev": "npm --prefix server run dev",
     "server:start": "npm --prefix server run start"
   },

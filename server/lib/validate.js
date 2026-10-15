@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
-
-export const isId = (v) => mongoose.isValidObjectId(v) && String(v).length === 24;
+/** Primary keys are positive integers (BIGINT UNSIGNED), passed around as strings in the JSON API. */
+export const isId = (v) => /^[1-9]\d{0,18}$/.test(String(v));
+export const toId = (v) => String(v);
 
 export function str(v, max = 255) {
   if (v === undefined || v === null) return '';
@@ -53,7 +53,7 @@ export function cleanSeo(input) {
   return { title: str(s.title, 70), description: str(s.description, 200), canonical, ogImage };
 }
 
-/** Remove Mongo operator keys ($…, a.b) from user input to block NoSQL injection. */
+/** Drop keys starting with $ or containing '.' from request bodies (defence in depth; SQL is always parameterised). */
 export function stripOperators(value, depth = 0) {
   if (depth > 8 || value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map((v) => stripOperators(v, depth + 1));
