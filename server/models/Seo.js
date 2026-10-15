@@ -13,3 +13,4 @@ export async function upsert({ path, title, description, canonical, ogImage, noi
   return getByPath(path);
 }
 export async function remove(id) { return (await query('DELETE FROM seo_entries WHERE id = ?', [id])).affectedRows > 0; }
+
