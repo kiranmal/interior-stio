@@ -1,8 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
 import Seo from '../hooks/useSeo.jsx';
-import { useContent, useSite, FALLBACK } from '../hooks/useData.js';
+import { useContent, useSite, usePage, FALLBACK } from '../hooks/useData.js';
 import { PageHero, State, Stars, Reveal, Prose } from '../components/ui.jsx';
-import { BlogCard, TeamGrid, CtaBlock } from '../components/Sections.jsx';
+import { BlogCard, TeamGrid, CtaBlock, Sections } from '../components/Sections.jsx';
 import { FAQList } from '../components/FAQList.jsx';
 import EnquiryForm from '../components/EnquiryForm.jsx';
 import CostCalculator from '../components/CostCalculator.jsx';
@@ -19,7 +19,7 @@ export function Testimonials() {
   const { items, loading, error } = useContent('testimonial');
   return <><Seo title="Client testimonials" description="What homeowners and business owners say about working with Ivy Interio." /><PageHero title="Testimonials" sub="Kind words from the people we have designed for." />
     <section className="sec"><div className="wrap"><State loading={loading} error={error} empty={!items.length} emptyText="Reviews will appear here soon.">
-      <div className="tgrid light">{items.map((t, i) => <Reveal as="figure" i={i % 3} key={itemKey(t)}><Stars n={t.meta?.rating} /><blockquote>{t.description}</blockquote><figcaption><b>{t.title}</b>{t.meta?.role && <span>{t.meta.role}</span>}</figcaption></Reveal>)}</div></State></div></section>
+      <div className="tgrid light">{items.map((t, i) => <Reveal as="figure" i={i % 3} key={itemKey(t)}>{t.meta?.rating && <Stars n={t.meta.rating} />}<blockquote>{t.description}</blockquote><figcaption><b>{t.title}</b>{t.meta?.role && <span>{t.meta.role}</span>}</figcaption></Reveal>)}</div></State></div></section>
     <CtaBlock s={{ heading: 'Start your own project', ctaLabel: 'Get a quote', ctaUrl: '/get-a-quote' }} /></>;
 }
 
@@ -78,5 +78,35 @@ function Legal({ title, intro, parts, desc }) {
   return <><Seo title={title} description={desc} /><PageHero title={title} sub={intro} />
     <section className="sec"><div className="wrap narrow prose">{parts.map(([h, t]) => <div key={h}><h2>{h}</h2><p>{t}</p></div>)}</div></section></>;
 }
+
+function TermsBlock({ b }) {
+  const site = useSite();
+  if (typeof b === 'string') return <p>{b}</p>;
+  if (b.lead) return <p><strong>{b.lead}</strong> {b.text}</p>;
+  if (b.list) return <ul>{b.list.map((x) => <li key={x}>{x}</li>)}</ul>;
+  if (b.contact) {
+    const addr = [site.addressLine1, site.addressLine2, site.addressLine3].filter(Boolean).join(', ');
+    return <address className="legal-contact">
+      <strong>{site.siteName}</strong>
+      {addr && <span>{addr}</span>}
+      {site.phone && <a href={`tel:+91${phoneDigits(site.phone)}`}>{site.phone}</a>}
+      {site.email && <a href={`mailto:${site.email}`}>{site.email}</a>}
+    </address>;
+  }
+  return null;
+}
+
+// Uses the CMS page "terms-and-conditions" (Admin → Pages) when it has been created; otherwise shows the client wording above.
+export function Terms() {
+  const { page, loading } = usePage('terms-and-conditions');
+  if (loading) return <State loading />;
+  if (page?.sections?.some((x) => x.visible !== false)) {
+    return <><Seo title={page.seo?.title || 'Terms & Conditions'} description={page.seo?.description} /><PageHero title={page.title || 'Terms & Conditions'} /><Sections sections={page.sections} /></>;
+  }
+  return <><Seo title="Terms & Conditions" description="Terms of use for the Ivy Interio website, estimates, quotations and portfolio content." />
+    <PageHero title="Terms &amp; Conditions" sub="Please read these terms before using our website or requesting an estimate." />
+    <section className="sec legal-page"><div className="wrap narrow">
+      <ol className="legal-list">{TERMS.map((t) => <li key={t.h} id={`terms-${slugify(t.h)}`}><h2>{t.h}</h2>{t.blocks.map((b, i) => <TermsBlock key={i} b={b} />)}</li>)}</ol>
+    </div></section></>;
+}
 export const Privacy = () => <Legal title="Privacy policy" desc="How Ivy Interio collects, uses and protects the information you share through its website." intro="How we handle the information you share with us." parts={PRIVACY} />;
-export const Terms = () => <Legal title="Terms and conditions" desc="Terms of use for the Ivy Interio website, estimates and quotations." intro="The basics of using this website and our estimates." parts={TERMS} />;

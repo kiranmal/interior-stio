@@ -7,3 +7,4 @@ export const dateLabel = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { d
 export const inr = (n) => (n >= 1e7 ? `₹${(n / 1e7).toFixed(1)} Cr` : n >= 1e5 ? `₹${(n / 1e5).toFixed(1)} L` : `₹${Number(n).toLocaleString('en-IN')}`);
 export const paragraphs = (t = '') => String(t).split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 export const phoneDigits = (p = '') => String(p).replace(/\D/g, '');
+export const dateShort = (d) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');

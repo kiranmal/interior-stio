@@ -52,9 +52,12 @@ export const gallery = [
 ];
 
 export const testimonials = [
-  { type: 'testimonial', title: 'Aditi Sharma', description: 'The team understood our lifestyle and turned a plain apartment into a warm, practical home. The planning was clear from the beginning.', meta: { role: 'Homeowner', rating: 5 }, order: 1, active: true },
-  { type: 'testimonial', title: 'Rohan Mehta', description: 'We wanted a professional office without making it feel cold. Ivy Interio balanced both beautifully and kept the execution organised.', meta: { role: 'Business Owner', rating: 5 }, order: 2, active: true },
-  { type: 'testimonial', title: 'Neha Kapoor', description: 'The kitchen and wardrobe storage were planned really well. Everything feels intentional and easy to use.', meta: { role: 'Homeowner', rating: 5 }, order: 3, active: true },
+  { type: 'testimonial', title: "Vikram Singh", description: "We wanted custom textures and flawless wall finishes for our living room and master suite. Their crew treated the walls with meticulous surface scraping, putty layering, and primer before applying the final coats. The lighting catches the textures exactly as promised, and visitors compliment the finish constantly.", meta: {}, order: 1, active: true },
+  { type: 'testimonial', title: "Vikram K.", description: "The team completely revitalized our wooden door frames, custom paneling, and cabinetry. The wood polishing work brought out rich natural grains without uneven tones or overspray onto the walls. Professional, polite, and exceptionally skilled craftsmen.", meta: { role: "Custom Joinery & Polishing" }, order: 2, active: true },
+  { type: 'testimonial', title: "Ananya D.", description: "We needed high-durability finishes and clean execution within a tight timeline before our office launch. The team managed the crew efficiently, adhered strictly to building guidelines, and delivered a sharp, contemporary look that elevated our entire workspace.", meta: { role: "Commercial / Executive Space Execution" }, order: 3, active: true },
+  { type: 'testimonial', title: "Rajesh & Meera S.", description: "Handing over our entire home for a complete overhaul felt daunting, but the team ran the project with precision. From the initial layout planning down to the electrical fixtures and ceiling details, everything aligned with the 3D renders. Most importantly, they stuck strictly to our 6-week timeline and handed over the flat spotless.", meta: { role: "Complete 3 BHK Interior Renovation, Indirapuram" }, order: 4, active: true },
+  { type: 'testimonial', title: "Sunita & Vivek Aggarwal", description: "We remodeled our kitchen and added customized wall-to-wall wardrobes across two rooms. The hardware alignment is seamless, soft-close hinges feel solid, and the laminate finishes are cut razor-sharp without rough edges. They turned dead corners into practical storage that looks straight out of a design magazine.", meta: { role: "Kitchen & Storage Remodel, Preet Vihar" }, order: 5, active: true },
+  { type: 'testimonial', title: "Sandeep Singhal", description: "We had a strict 18-day window to complete the interior finishing and acoustics for our design studio before client walkthroughs began. The crew managed the shifts effortlessly, kept noise within building compliance, and delivered a clean, contemporary finish right on schedule. Exceptional professional discipline.", meta: { role: "Fast-Track Commercial Office Fit-Out" }, order: 6, active: true },
 ];
 
 const post = (title, slug, order, category, description, content, image, readTime) => ({ type: 'blog', title, slug, order, category, description, content, image, tags: [category], author: 'Ivy Interio', meta: { readTime }, publishedAt: new Date(Date.now() - order * 864e5 * 7), active: true });
@@ -66,9 +69,11 @@ export const blog = [
 
 const member = (title, role, order, image, description) => ({ type: 'team', title, order, image, description, meta: { role }, active: true });
 export const team = [
-  member('Aarav Mehta', 'Creative Director', 1, u('photo-1560250097-0b93528c311a', 700), 'Leads the design direction and client conversations on every project.'),
-  member('Riya Kapoor', 'Senior Interior Designer', 2, u('photo-1573496359142-b8d87734a5a2', 700), 'Develops layouts, material palettes and detailed drawings.'),
-  member('Karan Malhotra', 'Project Manager', 3, u('photo-1500648767791-00dcc994a43e', 700), 'Coordinates vendors, schedules and site quality through to handover.'),
+  member("Saurabh Kumar", "Director – Design & Build", 1, '', ''),
+  member("Tabish Zaidi", "Director – Design & Build", 2, '', ''),
+  member("Ar. Mohd Danish", "Architect", 3, '', ''),
+  member("Shravan Kumar", "Design and Project Lead", 4, '', ''),
+  member("Rizwan Khan", "Design and Project Lead", 5, '', ''),
 ];
 
 const faq = (q, a, order) => ({ type: 'faq', title: q, description: a, order, active: true });
@@ -94,7 +99,7 @@ export const homePage = {
   key: 'home', title: 'Home', status: 'published',
   sections: [
     { id: 'hero', type: 'hero', heading: 'Interiors inspired by the way you live', subheading: 'Interior designers in Indirapuram, Ghaziabad – homes, kitchens and workplaces planned and delivered end to end.', ctaLabel: 'Get a free quote', ctaUrl: '/get-a-quote', visible: true },
-    { id: 'intro', type: 'intro', heading: 'A studio that plans before it decorates', body: 'Every Ivy Interio project starts with how a space will be used. We work through layout, storage, light and materials together, then manage the site so the finished room matches the drawings.', image: u('photo-1600607687939-ce8a6c25118c', 1200), ctaLabel: 'About the studio', ctaUrl: '/about', visible: true },
+    { id: 'intro', type: 'intro', heading: 'A studio that plans before it decorates', body: 'At Ivy Interio, we turn bare walls and blueprints into thoughtfully crafted living and working spaces.\n\nSince 2022, we have been delivering proven excellence in complete civil and structural construction, serving commercial establishments, government contracts, and residential developments. Expanding on that foundation, we launched our full-service turnkey interior division in 2024 to provide an effortless, stress-free transformation journey.\n\nWe believe great design shouldn\'t be complicated or overpriced. With comprehensive 2D floor plans, photorealistic 3D designs, and meticulous project management, we bring your vision to life on time, within budget, and without the coordination headaches.', image: u('photo-1600607687939-ce8a6c25118c', 1200), ctaLabel: 'About the studio', ctaUrl: '/about', visible: true },
     { id: 'services', type: 'services', heading: 'What we design', subheading: 'From a single kitchen to a complete home or office.', visible: true },
     { id: 'projects', type: 'projects', heading: 'Selected projects', subheading: 'Recent homes and workplaces across Delhi NCR.', visible: true },
     { id: 'process', type: 'process', heading: 'How a project runs', visible: true },

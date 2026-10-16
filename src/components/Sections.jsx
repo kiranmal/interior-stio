@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useContent } from "../hooks/useData.js";
 import {
@@ -10,7 +10,8 @@ import {
   Prose,
 } from "./ui.jsx";
 import { STEPS } from "../data/static.js";
-import { itemKey, itemSlug, dateLabel } from "../lib/format.js";
+import { itemKey, itemSlug, dateShort } from "../lib/format.js";
+import { Icon } from "./icons.jsx";
 import { FAQList } from "./FAQList.jsx";
 
 export function Cta({ to, children, className = "btn" }) {
@@ -38,135 +39,161 @@ function reduced() {
   );
 }
 
+function accentTail(text = "", words = 1) {
+  const parts = String(text).trim().split(/\s+/);
+  if (parts.length <= words + 1) return text;
+  return (
+    <>
+      {parts.slice(0, -words).join(" ")} <em>{parts.slice(-words).join(" ")}</em>
+    </>
+  );
+}
+
+const HERO_TILES = [
+  ["Residential Interiors", "/residential-interiors", "home2"],
+  ["Commercial Spaces", "/commercial-interiors", "building"],
+  ["Custom Design Solutions", "/services", "sofa"],
+];
+
 export function Hero({ s }) {
   const { items } = useContent("banner");
   const slides = items.filter((b) => b.image);
-
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(reduced());
-
   const n = slides.length;
   const cur = slides[idx];
 
   useEffect(() => {
-    if (paused || n < 2) return;
-
-    const timer = setInterval(() => {
-      setIdx((current) => (current + 1) % n);
-    }, 5000);
-
+    if (paused || n < 2) return undefined;
+    const timer = setInterval(() => setIdx((c) => (c + 1) % n), 5000);
     return () => clearInterval(timer);
-  }, [paused, n]);
+  }, [paused, n, idx]);
 
-  const changeSlide = (index) => {
-    setIdx((index + n) % n);
-  };
+  const go = (i) => setIdx((i + n) % n);
+  const pad = (v) => String(v + 1).padStart(2, "0");
 
   return (
-    <section className="hero">
-      {/* Full-screen background slider */}
-      <div className="hero-background">
+    <section className="hero" aria-roledescription="carousel" aria-label="Featured interiors">
+      <div className="hero-background" aria-hidden="true">
         {slides.map((b, i) => (
           <img
             key={itemKey(b)}
             src={b.image}
             alt=""
-            className={`hero-bg-image ${i === idx ? "active" : ""}`}
+            className={`hero-bg-image${i === idx ? " active" : ""}`}
+            loading={i === 0 ? "eager" : "lazy"}
           />
         ))}
       </div>
-
-      {/* Dark overlay */}
       <div className="hero-overlay" />
 
       <div className="wrap hero-grid">
-        {/* Left-side text */}
-        <div className="hero-copy" key={cur ? itemKey(cur) : "hero"}>
-          <h1>{s.heading}</h1>
-
+        <div className="hero-copy">
+          <p className="eyebrow">Modern interiors</p>
+          <h1>{accentTail(s.heading, 2)}</h1>
           {s.subheading && <p className="lede">{s.subheading}</p>}
-
           <div className="actions">
-            <Cta to={s.ctaUrl}>{s.ctaLabel || "Get a quote"}</Cta>
-
-            <Link className="tlink" to="/projects">
+            <Cta to={s.ctaUrl} className="btn">
+              {s.ctaLabel || "Get a free quote"}
+            </Cta>
+            <Link className="btn ghost" to="/projects">
               View projects
             </Link>
           </div>
         </div>
 
-        {/* Right-side carousel: synced with background */}
-        {n > 0 && (
-          <div className="hero-media">
-            <div className="arch">
-              {slides.map((b, i) => (
-                <img
-                  key={itemKey(b)}
-                  src={b.image}
-                  alt={i === idx ? b.title || "Featured work" : ""}
-                  className={i === idx ? "on" : ""}
-                />
-              ))}
-            </div>
-
-            <div className="hero-cap" aria-live="polite">
-              <b>{cur?.title}</b>
-              {cur?.description && <span>{cur.description}</span>}
-            </div>
-          </div>
-        )}
+        <ul className="hero-tiles">
+          {HERO_TILES.map(([label, to, icon]) => (
+            <li key={to}>
+              <Link to={to}>
+                <Icon name={icon} size={30} strokeWidth={1.2} />
+                <span>{label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Shared controls change both sliders */}
       {n > 1 && (
         <div className="hero-controls">
           <button
             type="button"
-            onClick={() => changeSlide(idx - 1)}
+            className="round"
+            onClick={() => go(idx - 1)}
             aria-label="Previous slide"
           >
-            ←
+            <Icon name="left" size={16} />
           </button>
-
-          <span>
-            {idx + 1} / {n}
-          </span>
-
           <button
             type="button"
-            onClick={() => changeSlide(idx + 1)}
+            className="round"
+            onClick={() => go(idx + 1)}
             aria-label="Next slide"
           >
-            →
+            <Icon name="right" size={16} />
           </button>
-
+          <div className="hero-dots" role="group" aria-label="Choose slide">
+            {slides.map((b, i) => (
+              <button
+                key={itemKey(b)}
+                type="button"
+                className={i === idx ? "on" : ""}
+                aria-label={`Slide ${i + 1}${b.title ? `: ${b.title}` : ""}`}
+                aria-current={i === idx}
+                onClick={() => go(i)}
+              >
+                {pad(i)}
+              </button>
+            ))}
+          </div>
+          <span className="hero-line" aria-hidden="true">
+            <i
+              key={`${idx}-${paused}`}
+              className={paused ? "paused" : ""}
+              style={{ "--dur": "5s" }}
+            />
+          </span>
           <button
             type="button"
-            onClick={() => setPaused((value) => !value)}
+            className="hero-pause"
+            onClick={() => setPaused((v) => !v)}
             aria-pressed={paused}
           >
             {paused ? "Play" : "Pause"}
           </button>
         </div>
       )}
+      <span className="sr" aria-live="polite">
+        {cur?.title}
+      </span>
     </section>
   );
 }
 
 export function Intro({ s }) {
   return (
-    <section className="sec intro">
+    <section className="sec intro" id="about">
       <div className="wrap split">
         <Reveal className="split-text">
-          <h2>{s.heading}</h2>
+          <p className="eyebrow">About us</p>
+          <h2>{accentTail(s.heading, 1)}</h2>
           <Prose text={s.body} />
-          <Cta to={s.ctaUrl} className="tlink">
-            {s.ctaLabel}
-          </Cta>
+          {s.ctaLabel && (
+            <Cta to={s.ctaUrl} className="more">
+              {s.ctaLabel}
+              <Icon name="arrow" size={14} />
+            </Cta>
+          )}
         </Reveal>
         {s.image && (
           <Reveal i={1} className="split-img">
             <img src={s.image} alt="" loading="lazy" />
+            {s.badgeValue && (
+              <div className="badge">
+                <b>{s.badgeValue}</b>
+                {s.badgeLabel && <span>{s.badgeLabel}</span>}
+              </div>
+            )}
           </Reveal>
         )}
       </div>
@@ -206,21 +233,25 @@ export function CtaBlock({ s }) {
   return (
     <section className="sec cta">
       <div className="wrap cta-in">
-        <Reveal>
+        <Reveal className="cta-copy">
           <h2>{s.heading}</h2>
           {s.body && <p className="lede">{s.body}</p>}
         </Reveal>
-        <Cta to={s.ctaUrl}>{s.ctaLabel || "Get in touch"}</Cta>
+        <Cta to={s.ctaUrl} className="btn">
+          {s.ctaLabel || "Get in touch"}
+          <Icon name="arrow" size={15} />
+        </Cta>
+        {s.image && <img className="cta-img" src={s.image} alt="" loading="lazy" />}
       </div>
     </section>
   );
 }
 
-export function ServiceGrid({ s, limit }) {
+export function ServiceGrid({ s, limit = 5 }) {
   const { items, loading, error } = useContent("service");
   const list = limit ? items.slice(0, limit) : items;
   return (
-    <section className="sec">
+    <section className="sec" id="services">
       <div className="wrap">
         <SectionHead
           title={s?.heading || "Services"}
@@ -234,12 +265,20 @@ export function ServiceGrid({ s, limit }) {
           empty={!list.length}
           emptyText="Services will appear here soon."
         >
-          <ul className="svc-list">
+          <ul className="svc-cards">
             {list.map((x, i) => (
               <Reveal as="li" i={i} key={itemKey(x)}>
                 <Link to={`/services/${itemSlug(x)}`}>
-                  <b>{x.title}</b>
-                  <span>{x.description}</span>
+                  <span className="svc-photo">
+                    {x.image && <img src={x.image} alt="" loading="lazy" />}
+                  </span>
+                  <span className="svc-body">
+                    <b>{x.title}</b>
+                    <span>{x.description}</span>
+                    <i className="go" aria-hidden="true">
+                      <Icon name="arrow" size={14} />
+                    </i>
+                  </span>
                 </Link>
               </Reveal>
             ))}
@@ -250,12 +289,21 @@ export function ServiceGrid({ s, limit }) {
   );
 }
 
-export function ProjectGrid({ s, limit = 4 }) {
+function chunk(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+export function ProjectGrid({ s, limit = 6 }) {
   const { items, loading, error } = useContent("project");
+  const [cat, setCat] = useState("All");
+  const cats = ["All", ...new Set(items.map((p) => p.category).filter(Boolean))];
   const feat = items.filter((p) => p.featured);
-  const list = (feat.length >= 3 ? feat : items).slice(0, limit);
+  const base = feat.length >= 3 ? feat : items;
+  const list = (cat === "All" ? base : items.filter((p) => p.category === cat)).slice(0, limit);
   return (
-    <section className="sec tint">
+    <section className="sec" id="projects">
       <div className="wrap">
         <SectionHead
           title={s?.heading || "Projects"}
@@ -266,28 +314,75 @@ export function ProjectGrid({ s, limit = 4 }) {
         <State
           loading={loading}
           error={error}
-          empty={!list.length}
+          empty={!items.length}
           emptyText="Projects will appear here soon."
         >
-          <div className="pgrid">
-            {list.map((p, i) => (
-              <ProjectCard key={itemKey(p)} p={p} i={i} />
+          {cats.length > 2 && (
+            <div className="pills" role="group" aria-label="Filter projects">
+              {cats.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={c === cat ? "on" : ""}
+                  aria-pressed={c === cat}
+                  onClick={() => setCat(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="pj">
+            {chunk(list, 3).map((blk, b) => (
+              <div className="pj-block" key={blk.map(itemKey).join("|")}>
+                {blk.map((p, i) => (
+                  <Reveal as="article" i={i + b} key={itemKey(p)} className="pj-card">
+                    <Link to={`/projects/${itemSlug(p)}`}>
+                      {p.image && (
+                        <img
+                          src={p.image}
+                          alt={`${p.title}${p.location ? `, ${p.location}` : ""}`}
+                          loading="lazy"
+                        />
+                      )}
+                      <span className="pj-cap">
+                        <b>{p.title}</b>
+                        <small>{p.category}</small>
+                        <i className="go" aria-hidden="true">
+                          <Icon name="arrow" size={15} />
+                        </i>
+                      </span>
+                    </Link>
+                  </Reveal>
+                ))}
+              </div>
             ))}
           </div>
+          {!list.length && <div className="state">No projects in this category yet.</div>}
         </State>
       </div>
     </section>
   );
 }
 
+const STEP_ICONS = ["chat", "pencil", "plan", "gear", "house"];
+
 export function Process({ s }) {
   return (
-    <section className="sec">
+    <section className="sec" id="process">
       <div className="wrap">
-        <SectionHead title={s?.heading || "How a project runs"} />
+        <SectionHead
+          title={s?.heading || "How a project runs"}
+          action="All process"
+          to="/about"
+        />
         <ol className="steps">
           {STEPS.map((x, i) => (
             <Reveal as="li" i={i} key={x.title}>
+              <span className="step-ic">
+                <Icon name={STEP_ICONS[i] || "house"} size={26} strokeWidth={1.3} />
+              </span>
+              <small>Step {String(i + 1).padStart(2, "0")}</small>
               <b>{x.title}</b>
               <span>{x.text}</span>
             </Reveal>
@@ -298,33 +393,55 @@ export function Process({ s }) {
   );
 }
 
-export function Testimonials({ s, limit = 3 }) {
+export function Testimonials({ s, limit = 12 }) {
   const { items, loading, error } = useContent("testimonial");
   const list = items.slice(0, limit);
+  const track = useRef(null);
+  const scroll = (dir) => {
+    const el = track.current;
+    if (!el) return;
+    const card = el.querySelector("figure");
+    const step = card ? card.getBoundingClientRect().width + 24 : el.clientWidth;
+    el.scrollBy({ left: dir * step, behavior: reduced() ? "auto" : "smooth" });
+  };
   return (
-    <section className="sec dark">
+    <section className="sec dark" id="testimonials">
       <div className="wrap">
-        <SectionHead
-          title={s?.heading || "Client words"}
-          action="More reviews"
-          to="/testimonials"
-        />
+        <div className="sec-head t-head">
+          <div>
+            <p className="eyebrow">Testimonials</p>
+            <h2>{s?.heading || "Client words"}</h2>
+          </div>
+          {list.length > 3 && (
+            <div className="t-arrows">
+              <button type="button" className="round" onClick={() => scroll(-1)} aria-label="Previous reviews">
+                <Icon name="left" size={16} />
+              </button>
+              <button type="button" className="round" onClick={() => scroll(1)} aria-label="Next reviews">
+                <Icon name="right" size={16} />
+              </button>
+            </div>
+          )}
+        </div>
         <State
           loading={loading}
           error={error}
           empty={!list.length}
           emptyText="Reviews will appear here soon."
         >
-          <div className="tgrid">
-            {list.map((t, i) => (
-              <Reveal as="figure" i={i} key={itemKey(t)}>
-                <Stars n={t.meta?.rating} />
+          <div className="tgrid" ref={track} tabIndex={0} aria-label="Client reviews">
+            {list.map((t) => (
+              <figure key={itemKey(t)}>
+                {t.meta?.rating && <Stars n={t.meta.rating} />}
                 <blockquote>{t.description}</blockquote>
                 <figcaption>
                   <b>{t.title}</b>
                   {t.meta?.role && <span>{t.meta.role}</span>}
                 </figcaption>
-              </Reveal>
+                <span className="qmark" aria-hidden="true">
+                  &rdquo;
+                </span>
+              </figure>
             ))}
           </div>
         </State>
@@ -337,7 +454,7 @@ export function BlogTeaser({ s, limit = 3 }) {
   const { items, loading, error } = useContent("blog");
   const list = items.slice(0, limit);
   return (
-    <section className="sec">
+    <section className="sec notes" id="notes">
       <div className="wrap">
         <SectionHead
           title={s?.heading || "Journal"}
@@ -370,13 +487,12 @@ export function BlogCard({ b, i = 0 }) {
             <img src={b.image} alt="" loading="lazy" />
           </span>
         )}
-        <small>
-          {[b.category, dateLabel(b.publishedAt || b.createdAt)]
-            .filter(Boolean)
-            .join(", ")}
-        </small>
+        <small>{dateShort(b.publishedAt || b.createdAt)}</small>
         <b>{b.title}</b>
         <span>{b.description}</span>
+        <em className="rm">
+          Read more <Icon name="arrow" size={13} />
+        </em>
       </Link>
     </Reveal>
   );

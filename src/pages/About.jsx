@@ -21,14 +21,14 @@ export default function About() {
           <Reveal className="split-text">
             <h2>Good interiors reflect the people who use them</h2>
             <p>
-              ​At Ivy Interio, we turn bare walls and blueprints into
-              thoughtfully crafted living and working spaces. ​Since 2022, we
+              At Ivy Interio, we turn bare walls and blueprints into
+              thoughtfully crafted living and working spaces. Since 2022, we
               have been delivering proven excellence in complete civil and
               structural construction, serving commercial establishments,
               government contracts, and residential developments. Expanding on
               that foundation, we launched our full-service turnkey interior
               division in 2024 to provide an effortless, stress-free
-              transformation journey. ​We believe great design shouldn't be
+              transformation journey. We believe great design shouldn't be
               complicated or overpriced. With comprehensive 2D floor plans,
               photorealistic 3D designs, and meticulous project management, we
               bring your vision to life on time, within budget, and without the
