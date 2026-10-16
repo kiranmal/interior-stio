@@ -22,13 +22,29 @@ export function dbConfig(overrides = {}) {
   let ssl;
 
   if (process.env.DB_SSL === "true") {
-    const caPath = path.resolve(
-      process.cwd(),
-      process.env.DB_SSL_CA || "./certs/aiven-ca.pem",
-    );
+    let ca = process.env.DB_SSL_CA_CONTENT;
+
+    // Optional fallback to a certificate file for local development.
+    if (!ca) {
+      const caPath = path.resolve(
+        process.cwd(),
+        process.env.DB_SSL_CA || "./certs/aiven-ca.pem",
+      );
+
+      if (fs.existsSync(caPath)) {
+        ca = fs.readFileSync(caPath, "utf8");
+      }
+    }
+
+    if (!ca) {
+      throw new Error(
+        "MySQL SSL is enabled, but the CA certificate is missing. " +
+          "Set DB_SSL_CA_CONTENT or provide the CA certificate file.",
+      );
+    }
 
     ssl = {
-      ca: fs.readFileSync(caPath, "utf8"),
+      ca,
       rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
     };
   }
