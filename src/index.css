@@ -900,6 +900,37 @@ p {
   color: var(--walnut);
 }
 
+/* Mobile homepage hero spacing */
+@media (max-width: 768px) {
+  .hero-grid {
+    margin-top: 2rem;
+    padding-top: 3rem;
+  }
+
+  .hero-copy {
+    text-align: center;
+  }
+
+  .hero-copy .eyebrow,
+  .hero-copy h1,
+  .hero-copy .lede {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-copy h1 {
+    max-width: 22ch;
+  }
+
+  .hero-copy .lede {
+    max-width: 40ch;
+  }
+
+  .hero-copy .actions {
+    justify-content: center;
+  }
+}
+
 /* forms */
 .form {
   display: grid;
@@ -1099,6 +1130,31 @@ p {
   opacity: 1;
   transform: none;
 }
+/* Mobile: Services and Quick Links side by side */
+/* Mobile: Services and Quick Links side by side */
+@media (max-width: 768px) {
+  .ftr-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 24px 16px;
+  }
+
+  .ftr-grid > .ftr-about {
+    grid-column: 1 / -1 !important;
+  }
+
+  .ftr-grid > nav[aria-label="Services"],
+  .ftr-grid > nav[aria-label="Quick links"] {
+    display: block !important;
+    grid-column: auto !important;
+    min-width: 0;
+  }
+
+  .ftr-grid > div:last-child {
+    grid-column: 1 / -1 !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -2248,13 +2304,25 @@ h2 em {
   .pj-card {
     aspect-ratio: 1.45;
   }
-  .steps {
-    grid-template-columns: 1fr 1fr;
+  .steps li {
+    display: flex;
     align-items: center;
-    justify-items: center;
+    gap: 14px;
+    text-align: left;
+  }
+
+  .steps li .step-ic {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    margin-inline: auto;
-    width: 100%;
+  }
+
+  .steps li small,
+  .steps li b,
+  .steps li > span:not(.step-ic) {
+    display: block;
+    text-align: left;
   }
   .tgrid figure {
     flex-basis: 86%;
