@@ -49,6 +49,21 @@ export function Field({ label, help, error, children, full }) {
   return <label className={`a-field${full ? ' full' : ''}${error ? ' bad' : ''}`}><span>{label}</span>{children}{help && <small>{help}</small>}{error && <small className="err">{error}</small>}</label>;
 }
 
+// Shrink big photos in the browser before upload (max 2000px wide, WebP/JPEG), so phone photos
+// stay well under the server's body-size limits and load fast on the website.
+async function shrinkImage(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 600 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 2000 / bmp.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.85));
+    return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' }) : file;
+  } catch { return file; }
+}
+
 export function ImageField({ label = 'Image', value, onChange, help }) {
   const { api, uploads } = useAdmin();
   const [busy, setBusy] = useState(false);
@@ -57,7 +72,7 @@ export function ImageField({ label = 'Image', value, onChange, help }) {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
     setBusy(true); setErr('');
-    try { const form = new FormData(); form.append('file', file); const r = await api('/api/admin/upload', { method: 'POST', form }); onChange(r.url); }
+    try { const form = new FormData(); form.append('file', await shrinkImage(file)); const r = await api('/api/admin/upload', { method: 'POST', form }); onChange(r.url); }
     catch (x) { setErr(x.message); } finally { setBusy(false); }
   }
   return (
@@ -68,7 +83,7 @@ export function ImageField({ label = 'Image', value, onChange, help }) {
         <div className="a-img-ctl">
           <input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="https://… image URL" aria-label={`${label} URL`} />
           {uploads ? <label className="a-btn sm">{busy ? 'Uploading…' : 'Upload image'}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={pick} hidden disabled={busy} /></label>
-            : <small>Uploads are not configured on the server. Paste an image URL, or set the CLOUDINARY_* variables to enable uploads.</small>}
+            : <small>Uploads are unavailable right now. Paste an image URL instead.</small>}
           {value && <button type="button" className="a-btn sm" onClick={() => onChange('')}>Remove</button>}
           {err && <small className="err">{err}</small>}
         </div>

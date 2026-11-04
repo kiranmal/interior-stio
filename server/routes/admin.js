@@ -16,6 +16,7 @@ import * as Seo from '../models/Seo.js';
 import auth, { requireRole } from '../middleware/auth.js';
 import { loginLimiter, adminLimiter } from '../middleware/rateLimit.js';
 import { cloudinaryEnabled, uploadBuffer } from '../lib/cloudinary.js';
+import { saveImage } from '../lib/media.js';
 import { str, urlOrPath, bool, int, isEmail, isId, slugify, cleanSeo, ValidationError, wrap } from '../lib/validate.js';
 
 const router = Router();
@@ -223,6 +224,49 @@ function cleanSettings(b = {}) {
 router.get('/settings', requireRole('editor'), wrap(async (_req, res) => res.json({ settings: await Settings.getAll() })));
 router.put('/settings', requireRole('admin'), wrap(async (req, res) => res.json({ settings: await Settings.save(cleanSettings(req.body), req.admin.email) })));
 
+/* ---------- Cost calculator (admin only to change) ---------- */
+function cleanCalculator(b = {}) {
+  const numIn = (v, min, max, label) => {
+    const n = Number(v);
+    if (v === '' || v === null || v === undefined || !Number.isFinite(n) || n < min || n > max) throw new ValidationError(`${label} must be a number between ${min} and ${max}.`);
+    return n;
+  };
+  const list = (arr, label, build) => {
+    if (!Array.isArray(arr) || arr.length < 1 || arr.length > 12) throw new ValidationError(`${label}: add between 1 and 12 items.`);
+    const items = arr.map((x, i) => build(x || {}, `${label} #${i + 1}`));
+    const names = items.map((x) => x.name.toLowerCase());
+    if (new Set(names).size !== names.length) throw new ValidationError(`${label}: names must be unique.`);
+    return items;
+  };
+  const name = (v, label) => { const n = str(v, 40); if (!n) throw new ValidationError(`${label}: name is required.`); return n; };
+
+  const minArea = numIn(b.minArea, 50, 100000, 'Minimum area');
+  const maxArea = numIn(b.maxArea, 50, 1000000, 'Maximum area');
+  if (minArea >= maxArea) throw new ValidationError('Minimum area must be less than maximum area.');
+
+  const finishLevels = list(b.finishLevels, 'Finish levels', (x, l) => ({
+    name: name(x.name, l), rate: numIn(x.rate, 1, 1000000, `${l} rate`), rangeAdd: numIn(x.rangeAdd ?? 0, 0, 1000000, `${l} range add-on`),
+  }));
+  const areaTypes = list(b.areaTypes, 'Area types', (x, l) => ({ name: name(x.name, l), factor: numIn(x.factor, 0.1, 2, `${l} factor`) }));
+  const propertyTypes = list(b.propertyTypes, 'Property types', (x, l) => ({ name: name(x.name, l), multiplier: numIn(x.multiplier ?? 1, 0.1, 10, `${l} multiplier`) }));
+
+  const defaultFinish = finishLevels.some((f) => f.name === str(b.defaultFinish, 40)) ? str(b.defaultFinish, 40) : finishLevels[0].name;
+  return {
+    minArea, maxArea, defaultFinish, finishLevels, areaTypes, propertyTypes,
+    disclaimer: str(b.disclaimer, 300), successMessage: str(b.successMessage, 300),
+  };
+}
+router.get('/calculator', requireRole('editor'), wrap(async (_req, res) => {
+  let config = null;
+  try { const raw = await Settings.getValue('calculatorConfig'); config = raw ? JSON.parse(raw) : null; } catch { config = null; }
+  res.json({ config });
+}));
+router.put('/calculator', requireRole('admin'), wrap(async (req, res) => {
+  const config = cleanCalculator(req.body);
+  await Settings.save({ calculatorConfig: JSON.stringify(config) }, req.admin.email);
+  res.json({ config });
+}));
+
 /* ---------- SEO ---------- */
 router.get('/seo', requireRole('editor'), wrap(async (_req, res) => res.json({ entries: await Seo.listAll() })));
 router.put('/seo', requireRole('editor'), wrap(async (req, res) => {
@@ -242,16 +286,19 @@ const upload = multer({
   storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => (['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.mimetype) ? cb(null, true) : cb(new ValidationError('Only JPG, PNG, WebP or AVIF images up to 5 MB are allowed.'))),
 });
-router.get('/upload/status', requireRole('editor'), (_req, res) => res.json({ enabled: cloudinaryEnabled() }));
+// Uploads always work: Cloudinary when configured, otherwise stored in the database.
+router.get('/upload/status', requireRole('editor'), (_req, res) => res.json({ enabled: true, storage: cloudinaryEnabled() ? 'cloudinary' : 'database' }));
 router.post('/upload', requireRole('editor'), (req, res, next) => {
-  if (!cloudinaryEnabled()) return res.status(501).json({ error: 'Image uploads are not configured. Paste an image URL instead, or set the CLOUDINARY_* variables.' });
   upload.single('file')(req, res, (err) => {
     if (err?.code === 'LIMIT_FILE_SIZE') return next(new ValidationError('Image is larger than 5 MB.'));
     return err ? next(err) : next();
   });
 }, wrap(async (req, res) => {
   if (!req.file) throw new ValidationError('No file received.');
-  res.status(201).json(await uploadBuffer(req.file.buffer));
+  if (cloudinaryEnabled()) return res.status(201).json(await uploadBuffer(req.file.buffer));
+  const id = await saveImage(req.file.buffer, req.admin.email);
+  const base = (process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+  res.status(201).json({ url: `${base}/api/media/${id}` });
 }));
 
 export default router;

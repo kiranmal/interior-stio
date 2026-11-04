@@ -4,12 +4,28 @@ import * as Pages from '../models/pages.js';
 import * as Seo from '../models/Seo.js';
 import * as Content from '../models/content.js';
 import { str, wrap } from '../lib/validate.js';
+import { getImage } from '../lib/media.js';
 
 const router = Router();
 
 router.get('/api/settings', wrap(async (_req, res) => {
   res.set('Cache-Control', 'public, max-age=60');
   res.json({ settings: await Settings.getAll() });
+}));
+
+router.get('/api/calculator', wrap(async (_req, res) => {
+  let config = null;
+  try { const raw = await Settings.getValue('calculatorConfig'); config = raw ? JSON.parse(raw) : null; } catch { config = null; }
+  res.set('Cache-Control', 'public, max-age=30');
+  res.json({ config });
+}));
+
+router.get('/api/media/:id', wrap(async (req, res) => {
+  if (!/^[1-9]\d{0,18}$/.test(req.params.id)) return res.status(404).end();
+  const img = await getImage(req.params.id);
+  if (!img) return res.status(404).end();
+  res.set({ 'Content-Type': img.mime_type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+  res.send(img.data);
 }));
 
 router.get('/api/pages', wrap(async (_req, res) => {
