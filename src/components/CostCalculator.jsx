@@ -1,38 +1,69 @@
-import { useState } from "react";
-import { request } from "../lib/api.js";
+import { useEffect, useState } from "react";
+import { getCached, request } from "../lib/api.js";
 import { inr } from "../lib/format.js";
+import { DEFAULT_CALCULATOR } from "../lib/calculatorDefaults.js";
 
-const RATES = { Standard: 1400, Premium: 2000, Luxury: 2800 };
 const money = (n) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
-// Rates above are per sq ft of CARPET area. Built-up and super built-up
-// areas include walls and common areas, so they are scaled down to a
-// carpet-area equivalent. Change these numbers to tune the estimate.
-const AREA_TYPES = {
-  "Carpet Area": 1,
-  "Built-up Area": 0.85,
-  "Super Built-up Area": 0.7,
-};
+// Merge whatever the admin saved over the defaults, so a missing/old field never breaks the page.
+function normalise(c) {
+  const list = (v, fallback) => (Array.isArray(v) && v.length ? v : fallback);
+  return {
+    ...DEFAULT_CALCULATOR,
+    ...(c || {}),
+    finishLevels: list(c?.finishLevels, DEFAULT_CALCULATOR.finishLevels),
+    areaTypes: list(c?.areaTypes, DEFAULT_CALCULATOR.areaTypes),
+    propertyTypes: list(c?.propertyTypes, DEFAULT_CALCULATOR.propertyTypes),
+  };
+}
 
+// Rates are per sq ft of CARPET area. Built-up / super built-up areas are scaled down
+// to a carpet-area equivalent using the admin-defined factor. All numbers now come
+// from Admin > Cost calculator.
 export default function CostCalculator() {
+  const [cfg, setCfg] = useState(DEFAULT_CALCULATOR);
   const [area, setArea] = useState("");
-  const [quality, setQuality] = useState("Premium");
-  const [propertyType, setPropertyType] = useState("2 BHK");
-  const [areaType, setAreaType] = useState("Carpet Area");
+  const [quality, setQuality] = useState("");
+  const [propertyType, setPropertyType] = useState("");
+  const [areaType, setAreaType] = useState("");
   const [contact, setContact] = useState({ name: "", phone: "" });
   const [status, setStatus] = useState({ state: "idle", message: "" });
+
+  useEffect(() => {
+    let alive = true;
+    getCached("/api/calculator", 30000)
+      .then((d) => alive && d.config && setCfg(normalise(d.config)))
+      .catch(() => {}); // keep defaults if the API is unreachable
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Selected values fall back to the first/default option if the admin renamed or removed one.
+  const level =
+    cfg.finishLevels.find((l) => l.name === quality) ||
+    cfg.finishLevels.find((l) => l.name === cfg.defaultFinish) ||
+    cfg.finishLevels[0];
+  const aType = cfg.areaTypes.find((a) => a.name === areaType) || cfg.areaTypes[0];
+  const pType =
+    cfg.propertyTypes.find((p) => p.name === propertyType) ||
+    cfg.propertyTypes[Math.min(1, cfg.propertyTypes.length - 1)];
+
   const n = Number(area);
-  const valid = n >= 300 && n <= 20000;
-  const carpet = n * AREA_TYPES[areaType];
-  const lower = valid ? Math.round(carpet * RATES[quality]) : 0;
-  const upper = valid ? Math.round(carpet * (RATES[quality] + 400)) : 0;
+  const valid = n >= cfg.minArea && n <= cfg.maxArea;
+  const carpet = n * aType.factor;
+  const mult = Number(pType.multiplier) || 1;
+  const lower = valid ? Math.round(carpet * level.rate * mult) : 0;
+  const upper = valid
+    ? Math.round(carpet * (level.rate + (Number(level.rangeAdd) || 0)) * mult)
+    : 0;
 
   async function send(e) {
     e.preventDefault();
     if (!valid) {
       setStatus({
         state: "error",
-        message: "Enter an area between 300 and 20,000 sq ft.",
+        message: `Enter an area between ${cfg.minArea.toLocaleString("en-IN")} and ${cfg.maxArea.toLocaleString("en-IN")} sq ft.`,
       });
       return;
     }
@@ -43,18 +74,18 @@ export default function CostCalculator() {
         body: {
           ...contact,
           source: "cost-calculator",
-          propertyType,
-          areaType,
+          propertyType: pType.name,
+          areaType: aType.name,
           area: n,
-          quality,
+          quality: level.name,
           estimatedLower: lower,
           estimatedUpper: upper,
-          message: `Calculator estimate (${areaType}): ${inr(lower)} to ${inr(upper)}`,
+          message: `Calculator estimate (${aType.name}): ${inr(lower)} to ${inr(upper)}`,
         },
       });
       setStatus({
         state: "ok",
-        message: "Thank you. We will call you with a detailed estimate.",
+        message: cfg.successMessage || DEFAULT_CALCULATOR.successMessage,
       });
     } catch (err) {
       setStatus({ state: "error", message: err.message });
@@ -68,25 +99,23 @@ export default function CostCalculator() {
           <label htmlFor="c-type">Property</label>
           <select
             id="c-type"
-            value={propertyType}
+            value={pType.name}
             onChange={(e) => setPropertyType(e.target.value)}
           >
-            {["1 BHK", "2 BHK", "3 BHK", "4 BHK +", "Villa", "Office"].map(
-              (o) => (
-                <option key={o}>{o}</option>
-              ),
-            )}
+            {cfg.propertyTypes.map((o) => (
+              <option key={o.name}>{o.name}</option>
+            ))}
           </select>
         </div>
         <div className="field">
           <label htmlFor="c-area-type">Type of Area</label>
           <select
             id="c-area-type"
-            value={areaType}
+            value={aType.name}
             onChange={(e) => setAreaType(e.target.value)}
           >
-            {Object.keys(AREA_TYPES).map((o) => (
-              <option key={o}>{o}</option>
+            {cfg.areaTypes.map((o) => (
+              <option key={o.name}>{o.name}</option>
             ))}
           </select>
         </div>
@@ -103,15 +132,15 @@ export default function CostCalculator() {
       </div>
       <fieldset className="seg">
         <legend>Finish level</legend>
-        {Object.keys(RATES).map((q) => (
-          <label key={q} className={quality === q ? "on" : ""}>
+        {cfg.finishLevels.map((l) => (
+          <label key={l.name} className={level.name === l.name ? "on" : ""}>
             <input
               type="radio"
               name="quality"
-              checked={quality === q}
-              onChange={() => setQuality(q)}
+              checked={level.name === l.name}
+              onChange={() => setQuality(l.name)}
             />
-            {q}
+            {l.name}
           </label>
         ))}
       </fieldset>
@@ -122,9 +151,7 @@ export default function CostCalculator() {
             <strong>
               {money(lower)} – {money(upper)}
             </strong>
-            <small>
-              Final cost depends on scope, materials and site conditions.
-            </small>
+            <small>{cfg.disclaimer}</small>
           </>
         ) : (
           <small>Enter your area to see an indicative range.</small>

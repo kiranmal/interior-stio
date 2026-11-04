@@ -8,6 +8,7 @@ import ContentManager from './ContentManager.jsx';
 import Enquiries from './Enquiries.jsx';
 import PagesManager from './Pages.jsx';
 import SeoManager from './Seo.jsx';
+import CalculatorSettings from './Calculator.jsx';
 import { SettingsPage, UsersPage, AccountPage } from './Manage.jsx';
 import { TYPES } from './schemas.js';
 
@@ -50,6 +51,7 @@ function Shell() {
           <h3>Leads</h3>
           {link('/admin/enquiries', 'Enquiries')}
           <h3>Site</h3>
+          {link('/admin/calculator', 'Cost calculator')}
           {link('/admin/seo', 'SEO')}
           {link('/admin/settings', 'Settings')}
           {admin.role === 'admin' && link('/admin/users', 'Admin users')}
@@ -68,6 +70,7 @@ function Shell() {
             <Route path="content/:type" element={<ContentManager />} />
             <Route path="enquiries" element={<Enquiries />} />
             <Route path="pages" element={<PagesManager />} />
+            <Route path="calculator" element={<CalculatorSettings />} />
             <Route path="seo" element={<SeoManager />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="users" element={admin.role === 'admin' ? <UsersPage /> : <Navigate to="/admin" replace />} />

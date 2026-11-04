@@ -27,3 +27,9 @@ export async function save(data, updatedBy) {
   return getAll();
 }
 export async function isEmpty() { return (await query('SELECT 1 FROM site_settings LIMIT 1')).length === 0; }
+
+/** Read a single setting value (or null). Used for JSON blobs such as the cost-calculator config. */
+export async function getValue(key) {
+  const rows = await query('SELECT setting_value FROM site_settings WHERE setting_key = ?', [key]);
+  return rows.length ? rows[0].setting_value : null;
+}
