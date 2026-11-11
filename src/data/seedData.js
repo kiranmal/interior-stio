@@ -160,6 +160,10 @@ export const projects = [
       u("photo-1600607687939-ce8a6c25118c"),
     ],
     {
+      status: "Completed",
+      bhk: "3-BHK",
+      society: "Vaibhav Khand",
+      scope: "Full Home, Living Room, Kitchen",
       year: "2024",
       area: "1,450 sq ft",
       duration: "45 days",
@@ -177,6 +181,10 @@ export const projects = [
     u("photo-1600566753190-17f0baa2a6c3"),
     [u("photo-1556912167-f556f1f39fdf")],
     {
+      status: "Completed",
+      bhk: "2-BHK",
+      society: "Vaibhav Khand",
+      scope: "Kitchen, Wardrobe",
       year: "2024",
       area: "160 sq ft",
       duration: "30 days",
@@ -194,6 +202,10 @@ export const projects = [
     u("photo-1497366811353-6870744d04b2"),
     [u("photo-1497366754035-f200968a6e72")],
     {
+      status: "Completed",
+      bhk: "Office",
+      society: "Ghaziabad",
+      scope: "Full Office, Cabins, Meeting Suite",
       year: "2023",
       area: "2,800 sq ft",
       duration: "60 days",
@@ -211,6 +223,10 @@ export const projects = [
     u("photo-1616486338812-3dadae4b4ace"),
     [u("photo-1618221195710-dd6b41faaea6")],
     {
+      status: "Completed",
+      bhk: "3-BHK",
+      society: "Noida",
+      scope: "Master Bedroom, Wardrobe",
       year: "2024",
       area: "320 sq ft",
       duration: "25 days",

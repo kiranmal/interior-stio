@@ -2566,3 +2566,34 @@ h2 em {
     font-size: 0.9rem;
   }
 }
+
+
+/* ---- Portfolio page (Livspace-style) ---- */
+.pf-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-bottom: 3rem; }
+.pf-tab { text-align: left; background: var(--ivory); border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem 1.6rem; cursor: pointer; font: inherit; color: var(--walnut); display: grid; gap: 0.4rem; transition: 0.25s; }
+.pf-tab small { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--taupe); }
+.pf-tab b { font: 600 1.7rem var(--serif); }
+.pf-tab span { color: var(--taupe); font-size: 0.95rem; }
+.pf-tab i { font-style: normal; font-weight: 600; font-size: 0.85rem; color: var(--terra, var(--olive)); margin-top: 0.4rem; }
+.pf-tab:hover { border-color: var(--terra, var(--olive)); transform: translateY(-2px); }
+.pf-tab.on { background: var(--walnut); border-color: var(--walnut); color: #fff; }
+.pf-tab.on small, .pf-tab.on span, .pf-tab.on i { color: rgba(255, 255, 255, 0.8); }
+.pf-h { margin: 0 0 1.4rem; }
+.pf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 2vw, 1.8rem); }
+.pf-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.pf-img { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; background: var(--cream); }
+.pf-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.9s var(--ease); }
+.pf-card:hover .pf-img img { transform: scale(1.045); }
+.pf-badge { position: absolute; left: 0.8rem; top: 0.8rem; padding: 0.25rem 0.7rem; border-radius: 999px; font: 600 0.68rem var(--sans); letter-spacing: 0.08em; text-transform: uppercase; background: #fff; color: var(--walnut); }
+.pf-badge.upcoming { background: var(--terra, var(--olive)); color: #fff; }
+.pf-body { padding: 1.1rem 1.2rem 1.3rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+.pf-body h3 { margin: 0; font: 600 1.35rem/1.25 var(--serif); }
+.pf-body h3 a { color: var(--walnut); text-decoration: none; }
+.pf-soc { margin: 0; color: var(--taupe); font-size: 0.9rem; }
+.pf-spec { margin: 0.3rem 0 0.6rem; display: grid; gap: 0.35rem; font-size: 0.85rem; }
+.pf-spec div { display: grid; grid-template-columns: 5.2rem 1fr; gap: 0.5rem; }
+.pf-spec dt { color: var(--taupe); }
+.pf-spec dd { margin: 0; color: var(--char); }
+.pf-cta { margin-top: auto; align-self: flex-start; font-weight: 600; font-size: 0.9rem; color: var(--terra, var(--olive)); text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
+@media (max-width: 980px) { .pf-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .pf-grid, .pf-tabs { grid-template-columns: 1fr; } }
